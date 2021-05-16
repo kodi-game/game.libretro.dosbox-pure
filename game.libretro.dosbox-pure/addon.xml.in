@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="game.libretro.dosbox-pure"
 		name="DOS (DOSBox-Pure)"
-		version="0.12.0.2"
+		version="0.13.0.3"
 		provider-name="DOSBox Team, Psyraven">
 	<requires>
 		<import addon="game.libretro" version="1.0.0"/>
@@ -14,7 +14,7 @@
 		<supports_standalone>true</supports_standalone>
 	</extension>
 	<extension point="xbmc.addon.metadata">
-		<summary lang="en_GB">DOS (DOSBox-Pure) 0.12</summary>
+		<summary lang="en_GB">DOS (DOSBox-Pure) 0.13</summary>
 		<description lang="en_GB">DOSBox Pure is a new fork of DOSBox built for RetroArch/Libretro aiming for simplicity and ease of use.
 
 Supported files: .zip, .dosz, .exe, .com, .bat, .iso, .cue, .ins, .img, .ima, .vhd, .m3u, .m3u8</description>
