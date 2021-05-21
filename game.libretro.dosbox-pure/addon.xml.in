@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="game.libretro.dosbox-pure"
 		name="DOS (DOSBox-Pure)"
-		version="0.13.0.3"
+		version="0.13.0.4"
 		provider-name="DOSBox Team, Psyraven">
 	<requires>
 		<import addon="game.libretro" version="1.0.0"/>
