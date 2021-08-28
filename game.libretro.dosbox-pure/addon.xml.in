@@ -17,6 +17,9 @@
 		<license>GPLv2</license>
 		<platform>@PLATFORM@</platform>
 		<source>https://github.com/kodi-game/game.libretro.dosbox-pure</source>
+		<assets>
+			<icon>resources/icon.png</icon>
+		</assets>
 		<summary lang="en_GB">DOS (DOSBox-Pure) 0.15</summary>
 		<description lang="en_GB">DOSBox Pure is a new fork of DOSBox built for RetroArch/Libretro aiming for simplicity and ease of use.</description>
 	</extension>
