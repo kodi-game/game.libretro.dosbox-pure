@@ -23,4 +23,3 @@ msgstr ""
 msgctxt "Addon Description"
 msgid "DOSBox Pure is a new fork of DOSBox built for RetroArch/Libretro aiming for simplicity and ease of use."
 msgstr ""
-
