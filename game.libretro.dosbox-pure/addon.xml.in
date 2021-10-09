@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="game.libretro.dosbox-pure"
 		name="DOS (DOSBox-Pure)"
-		version="0.16.0.8"
+		version="0.17.0.9"
 		provider-name="DOSBox Team, Psyraven">
 	<requires>
 		<import addon="game.libretro" version="1.0.0"/>
@@ -21,7 +21,7 @@
 		<assets>
 			<icon>resources/icon.png</icon>
 		</assets>
-		<summary lang="en_GB">DOS (DOSBox-Pure) 0.16</summary>
+		<summary lang="en_GB">DOS (DOSBox-Pure) 0.17</summary>
 		<description lang="en_GB">DOSBox Pure is a new fork of DOSBox built for RetroArch/Libretro aiming for simplicity and ease of use.</description>
 	</extension>
 </addon>
