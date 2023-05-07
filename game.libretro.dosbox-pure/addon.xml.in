@@ -21,6 +21,7 @@
 		<assets>
 			<icon>resources/icon.png</icon>
 		</assets>
+		<summary lang="da_DK">DOS (DOSBox-Pure)</summary>
 		<summary lang="en_GB">DOS (DOSBox-Pure)</summary>
 		<summary lang="es_ES">DOS (DOSBox-Pure)</summary>
 		<description lang="da_DK">DOSBox Pure er en ny fork af DOSBox bygget til RetroArch/Libretro med henblik på enkelhed og brugervenlighed.</description>
