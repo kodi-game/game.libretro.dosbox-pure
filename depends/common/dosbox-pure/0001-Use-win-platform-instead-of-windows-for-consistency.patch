@@ -1,0 +1,32 @@
+From 08ab9be34043186db4857d6be6c78d532f4a3740 Mon Sep 17 00:00:00 2001
+From: Garrett Brown <themagnificentmrb@gmail.com>
+Date: Tue, 5 Dec 2023 22:39:55 -0800
+Subject: [PATCH] Use "win" platform instead of "windows" for consistency
+
+Fixes build error:
+
+  Linking dosbox_pure_libretro.so ...
+  ...
+  CMake Error at cmake_install.cmake:44 (file):
+    file INSTALL cannot find
+    "C:/jenkins-workspace/workspace/binary-addons/kodi-windows-i686-Nexus/cmake/addons/build/dosbox-pure/src/dosbox-pure/./dosbox_pure_libretro.dll":
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 6bdad50..7fcb825 100644
+--- a/Makefile
++++ b/Makefile
+@@ -82,7 +82,7 @@ else ifneq ($(ISMAC),)
+   COMMONFLAGS  += $(ARCHFLAGS)
+   LDFLAGS      += $(ARCHFLAGS)
+   STRIPCMD := strip -xS
+-else ifeq ($(platform),windows) # For MSYS2 only
++else ifeq ($(platform),win) # For MSYS2 only
+   OUTNAME := dosbox_pure_libretro.dll
+   CXX     ?= g++
+   LDFLAGS := -Wl,--gc-sections -fno-ident
+-- 
+2.34.1
+
