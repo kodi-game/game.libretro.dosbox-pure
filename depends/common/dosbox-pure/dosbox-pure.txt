@@ -1,1 +1,1 @@
-dosbox-pure https://github.com/libretro/dosbox-pure/archive/ec951632d4cbf015e2c520128b31f2714679bd89.tar.gz
+dosbox-pure https://github.com/libretro/dosbox-pure/archive/d3f7051faa2eeedd3ad3ff2f23d5021004e80665.tar.gz
