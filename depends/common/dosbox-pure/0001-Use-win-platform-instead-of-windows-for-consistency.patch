@@ -1,4 +1,4 @@
-From 08ab9be34043186db4857d6be6c78d532f4a3740 Mon Sep 17 00:00:00 2001
+From 2e18a551fb925b456599c23e7cbddd06187d8e1b Mon Sep 17 00:00:00 2001
 From: Garrett Brown <themagnificentmrb@gmail.com>
 Date: Tue, 5 Dec 2023 22:39:55 -0800
 Subject: [PATCH] Use "win" platform instead of "windows" for consistency
@@ -15,13 +15,13 @@ Fixes build error:
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Makefile b/Makefile
-index 6bdad50..7fcb825 100644
+index ce9ee3b..50fbede 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -82,7 +82,7 @@ else ifneq ($(ISMAC),)
    COMMONFLAGS  += $(ARCHFLAGS)
    LDFLAGS      += $(ARCHFLAGS)
-   STRIPCMD := strip -xS
+   STRIPCMD := $(or $(STRIP),strip) -xS
 -else ifeq ($(platform),windows) # For MSYS2 only
 +else ifeq ($(platform),win) # For MSYS2 only
    OUTNAME := dosbox_pure_libretro.dll
