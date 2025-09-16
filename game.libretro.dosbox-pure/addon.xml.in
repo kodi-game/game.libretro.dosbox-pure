@@ -24,6 +24,7 @@
 		<summary lang="da_DK">DOS (DOSBox-Pure)</summary>
 		<summary lang="en_GB">DOS (DOSBox-Pure)</summary>
 		<summary lang="es_ES">DOS (DOSBox-Pure)</summary>
+		<summary lang="ga">DOS (DOSBox-Pure)</summary>
 		<summary lang="it_IT">DOS (DOSBox-Pure)</summary>
 		<summary lang="ko_KR">도스 (도스박스-순정)</summary>
 		<summary lang="ru_RU">DOS (DOSBox-Pure)</summary>
@@ -34,6 +35,7 @@
 		<description lang="en_GB">DOSBox Pure is a new fork of DOSBox built for RetroArch/Libretro aiming for simplicity and ease of use.</description>
 		<description lang="es_ES">DOSBox Pure es una nueva bifurcación de DOSBox construido para RetroArch/Libretro buscando la simplicidad y facilidad de uso.</description>
 		<description lang="fi_FI">DOSBox Pure on uusi DOSBox-haara, joka on rakennettu RetroArchille/Libretrolle ja joka pyrkii olemaan yksinkertainen ja helppo käyttää.</description>
+		<description lang="ga">Is forc nua de DOSBox é DOSBox Pure atá tógtha do RetroArch/Libretro a bhfuil sé mar aidhm aige simplíocht agus éascaíocht úsáide a bhaint amach.</description>
 		<description lang="it_IT">DOSBox Pure è un nuovo fork di DOSBox creato per RetroArch/Libretro con l&apos;obiettivo di semplicità e facilità d&apos;uso.</description>
 		<description lang="ko_KR">DOSBox Pure는 단순성과 사용 편의성을 목표로 RetroArch/Libretro용으로 제작된 DOSBox의 새로운 포크입니다.</description>
 		<description lang="ru_RU">DOSBox Pure — новая версия DOSBox, созданная для RetroArch/Libretro, нацеленная на простоту и удобство использования.</description>
