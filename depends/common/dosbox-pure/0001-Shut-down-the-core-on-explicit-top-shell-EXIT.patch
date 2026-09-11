@@ -1,0 +1,130 @@
+From d0410ec1b920c314d82702e5e93767e30dc99952 Mon Sep 17 00:00:00 2001
+From: Garrett Brown <garrett@Garretts-MacBook-Pro.local>
+Date: Fri, 11 Sep 2026 15:51:20 -0700
+Subject: [PATCH] Shut down the core on explicit top shell EXIT
+
+Track explicit top-shell EXIT separately from the Start Menu auto-shutdown
+option. Let DOS unwind normally, then request frontend shutdown from the
+existing dynamic libretro EXITED handler. Clear the request after the DOS
+thread stops so reset, reboot, and content reload cannot retain it.
+
+Keep first-frame EXIT requests instead of restarting DOS. Reuse the existing
+fallback frame setup when AUTOEXEC exits before video initializes. Preserve
+nested shell behavior, normal game termination, and the standalone and
+static-link shutdown branches.
+
+Verified release, debug, and static builds; keyboard-driven EXIT for every
+Start Menu choice; default game return to menu; 0/3/5-second delays; nested
+shells; first-frame EXIT; reset/reboot/reload flag cleanup; and no frontend
+shutdown from the static core. Inspected the standalone path and compiled
+its shell code.
+---
+ dosbox_pure_libretro.cpp | 27 +++++++++++++++++++++------
+ src/shell/shell_cmds.cpp | 12 ++++--------
+ 2 files changed, 25 insertions(+), 14 deletions(-)
+
+diff --git a/dosbox_pure_libretro.cpp b/dosbox_pure_libretro.cpp
+index ec99bf3..2768aaf 100644
+--- a/dosbox_pure_libretro.cpp
++++ b/dosbox_pure_libretro.cpp
+@@ -61,6 +61,7 @@ static enum DBP_State : Bit8u { DBPSTATE_BOOT, DBPSTATE_EXITED, DBPSTATE_SHUTDOW
+ static enum DBP_SerializeMode : Bit8u { DBPSERIALIZE_STATES, DBPSERIALIZE_REWIND, DBPSERIALIZE_DISABLED } dbp_serializemode;
+ static bool dbp_game_running, dbp_pause_events, dbp_paused_midframe, dbp_frame_pending, dbp_biosreboot, dbp_biospoweroff, dbp_system_cached, dbp_system_scannable, dbp_refresh_memmaps;
+ static bool dbp_optionsupdatecallback, dbp_reboot_set64mem, dbp_use_network, dbp_had_game_running, dbp_strict_mode, dbp_legacy_save, dbp_wasloaded, dbp_skip_c_mount;
++static bool dbp_shutdown_requested;
+ static signed char dbp_menu_time, dbp_conf_loading, dbp_reboot_machine;
+ static Bit8u dbp_alphablend_base;
+ static float dbp_auto_target, dbp_last_fastforward;
+@@ -1288,6 +1289,7 @@ static void DBP_Shutdown()
+ 		control = NULL;
+ 	}
+ 	dbp_state = DBPSTATE_SHUTDOWN;
++	dbp_shutdown_requested = false; // Clear after the DOSBox thread stops, also on reset/reload
+ }
+ 
+ void DBP_OnBIOSReboot()
+@@ -1313,13 +1315,18 @@ static double DBP_GetFPS()
+ 	return (dbp_forcefps ? dbp_forcefps : render.src.fps);
+ }
+ 
++static void DBP_EnsureShutdownFrame()
++{
++	if (!render.src.fps) { render.src = { 640, 0, 480, 32, 0, 0, 4.0/3, 70 }; } // shutdown before first frame
++	DBP_Buffer& buf = dbp_buffers[buffer_active];
++	if (!buf.video) { buf = { (Bit32u*)calloc(640*480, 4), 640, 480, 640*480*4, 0, 0, 0, 4.0f/3 }; } // shutdown before first draw
++}
++
+ void DBP_Crash(const char* msg)
+ {
+ 	log_cb(RETRO_LOG_WARN, "[DOSBOX] Crash: %s\n", msg);
+ 	dbp_crash_message = msg;
+-	if (!render.src.fps) { render.src = { 640, 0, 480, 32, 0, 0, 4.0/3, 70 }; } // crash before first frame
+-	DBP_Buffer& buf = dbp_buffers[buffer_active];
+-	if (!buf.video) { buf = { (Bit32u*)calloc(640*480, 4), 640, 480, 640*480*4, 0, 0, 0, 4.0f/3 }; } // crash before first draw
++	DBP_EnsureShutdownFrame();
+ 	DBP_DOSBOX_ForceShutdown();
+ }
+ 
+@@ -1354,6 +1361,13 @@ bool DBP_WantAutoShutDown()
+ 	return (dbp_menu_time >= 0 && dbp_menu_time < 99);
+ }
+ 
++void DBP_RequestShutdown()
++{
++	// Explicit top-shell EXIT, independent of the Start Menu auto-shutdown setting
++	DBP_EnsureShutdownFrame(); // AUTOEXEC can run EXIT before video is initialized
++	dbp_shutdown_requested = true;
++}
++
+ void DBP_EnableNetwork()
+ {
+ 	if (dbp_use_network) return;
+@@ -3332,9 +3346,10 @@ void retro_get_system_av_info(struct retro_system_av_info *info) // #5
+ {
+ 	DBP_ASSERT(dbp_state != DBPSTATE_BOOT);
+ 	DBP_ThreadControl(TCM_FINISH_FRAME);
+-	if (dbp_biosreboot || dbp_state == DBPSTATE_EXITED)
++	if (dbp_biosreboot || (dbp_state == DBPSTATE_EXITED && !dbp_shutdown_requested))
+ 	{
+-		// A reboot can happen during the first frame if puremenu wants to change DOSBox machine config or if autoexec via dosbox.conf ran 'exit'
++		// A reboot can happen during the first frame if puremenu wants to change DOSBox machine config
++		// Leave explicit EXIT requests for retro_run to handle instead of restarting DOS
+ 		DBP_ASSERT(dbp_state == DBPSTATE_EXITED && (dbp_biosreboot || dbp_crash_message.size() || (control && !dbp_game_running)));
+ 		DBP_ForceReset();
+ 		DBP_ThreadControl(TCM_FINISH_FRAME);
+@@ -3546,7 +3561,7 @@ void retro_run(void)
+ 				#else
+ 				// On statically linked platforms shutdown would exit the frontend, so don't do that. Just tint the screen red and sleep
+ 				#ifndef STATIC_LINKING
+-				if (dbp_menu_time >= 0 && dbp_menu_time < 99) // only auto shut down for users that want auto shut down in general
++				if (dbp_shutdown_requested || DBP_WantAutoShutDown())
+ 				{
+ 					environ_cb(RETRO_ENVIRONMENT_SHUTDOWN, 0);
+ 				}
+diff --git a/src/shell/shell_cmds.cpp b/src/shell/shell_cmds.cpp
+index c1b90bb..8ce8a3d 100644
+--- a/src/shell/shell_cmds.cpp
++++ b/src/shell/shell_cmds.cpp
+@@ -302,15 +302,11 @@ void DOS_Shell::CMD_ECHO(char * args){
+ 
+ void DOS_Shell::CMD_EXIT(char * args) {
+ 	HELP("EXIT");
+-#ifndef C_DBP_LIBRETRO // prevent exiting the first shell
+-	exit = true;
+-#else
+-	extern bool DBP_WantAutoShutDown();
+-	if (this != first_shell || DBP_WantAutoShutDown())
+-		exit = true;
+-	else
+-		WriteOut("\nUnable to exit top DOS shell\n\nTo enable shutting down the emulator with the exit command, change the setting\nGeneral > Advanced > Start Menu to [ Exit ... after auto started game ends ]\n\n");
++#ifdef C_DBP_LIBRETRO
++	extern void DBP_RequestShutdown();
++	if (this == first_shell) DBP_RequestShutdown();
+ #endif
++	exit = true;
+ }
+ 
+ void DOS_Shell::CMD_CHDIR(char * args) {
+-- 
+2.50.1 (Apple Git-155)
+
