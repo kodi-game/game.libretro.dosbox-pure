@@ -1,0 +1,191 @@
+From 8a81f101f7f919ba8034a13a1b5f83e06bcb6e71 Mon Sep 17 00:00:00 2001
+From: Garrett Brown <garrett@Garretts-MacBook-Pro.local>
+Date: Sun, 13 Sep 2026 00:11:01 -0700
+Subject: [PATCH 2/2] Support MAP_JIT for the macOS ARM64 dynarec
+
+Allocate the Apple Silicon code cache with MAP_JIT and release it with
+munmap. Scope JIT writes around block generation and startup/reset stubs,
+using thread-local nesting to restore execution protection correctly.
+
+Use sys_icache_invalidate at the existing ARM64 block flush hook and flush
+the generated stubs. The generic CTR_EL0 cache-maintenance path traps on
+Apple Silicon. Hardened hosts require com.apple.security.cs.allow-jit;
+allocation failure is explicit and has no executable-malloc fallback.
+
+Validated native arm64 and x86_64 compatibility builds, nested protection
+and cache lifecycle tests, and Quake timedemo under Hardened Runtime with
+only allow-jit. Existing iOS/tvOS dynarec-disable settings are unchanged.
+---
+ src/cpu/core_dynrec/decoder.h      |  1 +
+ src/cpu/core_dynrec/risc_armv8le.h |  6 +++
+ src/cpu/dyn_cache.h                | 64 ++++++++++++++++++++++++++++--
+ 3 files changed, 67 insertions(+), 4 deletions(-)
+
+diff --git a/src/cpu/core_dynrec/decoder.h b/src/cpu/core_dynrec/decoder.h
+index 89e2cce..5b5f57d 100644
+--- a/src/cpu/core_dynrec/decoder.h
++++ b/src/cpu/core_dynrec/decoder.h
+@@ -36,6 +36,7 @@
+ */
+ 
+ static CacheBlockDynRec * CreateCacheBlock(CodePageHandlerDynRec * codepage,PhysPt start,Bitu max_opcodes) {
++	CacheJitWriteScope jit_write;
+ 	// initialize a load of variables
+ 	decode.code_start=start;
+ 	decode.code=start;
+diff --git a/src/cpu/core_dynrec/risc_armv8le.h b/src/cpu/core_dynrec/risc_armv8le.h
+index 9f823ad..6c84acd 100644
+--- a/src/cpu/core_dynrec/risc_armv8le.h
++++ b/src/cpu/core_dynrec/risc_armv8le.h
+@@ -1143,6 +1143,12 @@ static void cache_block_closing(const Bit8u* block_start,Bitu block_size) {
+ 	//flush cache
+ 	FlushInstructionCache(hProcess, block_start, block_size);
+ }
++#elif defined(C_DYNREC_MAP_JIT)
++#include <libkern/OSCacheControl.h>
++static void cache_block_closing(const Bit8u* block_start,Bitu block_size) {
++	// Apple Silicon does not expose CTR_EL0 to userspace.
++	sys_icache_invalidate((void*)block_start,block_size);
++}
+ #else
+ static void cache_flush(char* start, char* end)
+ {
+diff --git a/src/cpu/dyn_cache.h b/src/cpu/dyn_cache.h
+index c9c4d63..b343a4e 100644
+--- a/src/cpu/dyn_cache.h
++++ b/src/cpu/dyn_cache.h
+@@ -16,6 +16,39 @@
+  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+  */
+ 
++#if defined(__APPLE__) && defined(__aarch64__)
++#include <TargetConditionals.h>
++#if TARGET_OS_OSX
++#define C_DYNREC_MAP_JIT 1
++#include <errno.h>
++#include <pthread.h>
++#include <sys/mman.h>
++#endif
++#endif
++
++#ifdef C_DYNREC_MAP_JIT
++static thread_local unsigned cache_jit_write_depth = 0;
++#endif
++
++// Generation includes branch/function patching. Only the outermost scope may
++// restore execution permission; Apple's JIT protection is per thread.
++class CacheJitWriteScope {
++public:
++	CacheJitWriteScope() {
++#ifdef C_DYNREC_MAP_JIT
++		if (cache_jit_write_depth++ == 0) pthread_jit_write_protect_np(0);
++#endif
++	}
++	~CacheJitWriteScope() {
++#ifdef C_DYNREC_MAP_JIT
++		if (--cache_jit_write_depth == 0) pthread_jit_write_protect_np(1);
++#endif
++	}
++private:
++	CacheJitWriteScope(const CacheJitWriteScope&) = delete;
++	CacheJitWriteScope& operator=(const CacheJitWriteScope&) = delete;
++};
++
+ #ifdef VITA
+ #include <psp2/kernel/sysmem.h>
+ static int sceBlock;
+@@ -669,7 +702,7 @@ static INLINE void cache_addq(Bit64u val) {
+ static void dyn_return(BlockReturn retcode,bool ret_exception);
+ static void dyn_run_code(void);
+ 
+-#ifdef WORDS_BIGENDIAN
++#if defined(WORDS_BIGENDIAN) || defined(C_DYNREC_MAP_JIT)
+ static void cache_block_before_close(void);
+ static void cache_block_closing(const Bit8u* block_start,Bitu block_size);
+ #endif
+@@ -683,6 +716,10 @@ static void cache_block_closing(const Bit8u* block_start,Bitu block_size);
+ 
+ static bool cache_initialized = false;
+ 
++#ifdef C_DYNREC_MAP_JIT
++static const size_t cache_jit_size = CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP;
++#endif
++
+ static void cache_init(bool enable) {
+ 	Bits i;
+ 	if (enable) {
+@@ -704,7 +741,16 @@ static void cache_init(bool enable) {
+ 		}
+ 		if (cache_code_start_ptr==NULL) {
+ 			// allocate the code cache memory
+-#if defined (WIN32)
++#if defined(C_DYNREC_MAP_JIT)
++			// MAP_JIT plus per-thread protection provides W^X on Apple Silicon.
++			// A hardened host must have com.apple.security.cs.allow-jit.
++			cache_code_start_ptr=(Bit8u*)mmap(NULL,cache_jit_size,
++				PROT_READ|PROT_WRITE|PROT_EXEC,MAP_PRIVATE|MAP_ANON|MAP_JIT,-1,0);
++			if (cache_code_start_ptr == MAP_FAILED) {
++				cache_code_start_ptr=NULL;
++				E_Exit("Allocating MAP_JIT dynamic cache failed: %s (host requires com.apple.security.cs.allow-jit)",strerror(errno));
++			}
++#elif defined (WIN32)
+ 			cache_code_start_ptr=(Bit8u*)VirtualAlloc(0,CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP,
+ 				MEM_COMMIT,PAGE_EXECUTE_READWRITE);
+ 			if (!cache_code_start_ptr)
+@@ -733,7 +779,7 @@ static void cache_init(bool enable) {
+ 			cache_code_link_blocks=cache_code;
+ 			cache_code=cache_code+PAGESIZE_TEMP;
+ 
+-#if (C_HAVE_MPROTECT)
++#if (C_HAVE_MPROTECT) && !defined(C_DYNREC_MAP_JIT)
+ 			if(mprotect(cache_code_link_blocks,CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP,PROT_WRITE|PROT_READ|PROT_EXEC))
+ 				LOG_MSG("Setting execute permission on the code cache has failed");
+ #endif
+@@ -745,6 +791,7 @@ static void cache_init(bool enable) {
+ 			block->cache.next=0;						// last block in the list
+ 		}
+ 		// setup the default blocks for block linkage returns
++		CacheJitWriteScope jit_write;
+ 		cache.pos=&cache_code_link_blocks[0];
+ #ifndef WORDS_BIGENDIAN
+ 		link_blocks[0].cache.start=cache.pos;
+@@ -760,6 +807,9 @@ static void cache_init(bool enable) {
+ 		core_dynrec.runcode=(BlockReturn (*)(const Bit8u*))cache.pos;
+ //		link_blocks[1].cache.start=cache.pos;
+ 		dyn_run_code();
++#ifdef C_DYNREC_MAP_JIT
++		cache_block_closing(cache_code_link_blocks,cache.pos-cache_code_link_blocks);
++#endif
+ #endif
+ #else
+ 		core_dynrec.runcode=(BlockReturn (*)(const Bit8u*))cache.pos;
+@@ -813,7 +863,9 @@ static void cache_close(void) {
+ 		cache_blocks = NULL;
+ 	}
+ 	if (cache_code_start_ptr != NULL) {
+-#if defined (WIN32)
++#if defined(C_DYNREC_MAP_JIT)
++		munmap(cache_code_start_ptr,cache_jit_size);
++#elif defined (WIN32)
+ 		if (!VirtualFree(cache_code_start_ptr, 0, MEM_RELEASE))
+ 			free(cache_code_start_ptr);
+ #elif defined (HAVE_LIBNX)
+@@ -857,11 +909,15 @@ static void DBPSerialize_cache_reset(void) {
+ 		block->cache.next=0;
+ 
+ 		/* Setup the default blocks for block linkage returns */
++		CacheJitWriteScope jit_write;
+ 		cache.pos=&cache_code_link_blocks[0];
+ 		link_blocks[0].cache.start=cache.pos;
+ 		dyn_return(BR_Link1,false);
+ 		cache.pos=&cache_code_link_blocks[32];
+ 		link_blocks[1].cache.start=cache.pos;
+ 		dyn_return(BR_Link2,false);
++#ifdef C_DYNREC_MAP_JIT
++		cache_block_closing(cache_code_link_blocks,cache.pos-cache_code_link_blocks);
++#endif
+ 	}
+ }
+-- 
+2.50.1 (Apple Git-155)
+
