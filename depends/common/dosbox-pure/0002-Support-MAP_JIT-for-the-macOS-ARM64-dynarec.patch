@@ -1,7 +1,7 @@
 From 8a81f101f7f919ba8034a13a1b5f83e06bcb6e71 Mon Sep 17 00:00:00 2001
 From: Garrett Brown <garrett@Garretts-MacBook-Pro.local>
 Date: Sun, 13 Sep 2026 00:11:01 -0700
-Subject: [PATCH 2/2] Support MAP_JIT for the macOS ARM64 dynarec
+Subject: [PATCH 2/3] Support MAP_JIT for the macOS ARM64 dynarec
 
 Allocate the Apple Silicon code cache with MAP_JIT and release it with
 munmap. Scope JIT writes around block generation and startup/reset stubs,

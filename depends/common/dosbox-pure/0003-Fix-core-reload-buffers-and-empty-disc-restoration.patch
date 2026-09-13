@@ -1,0 +1,39 @@
+From 61a9ef7e532e7b863955700ae5958bea98a52773 Mon Sep 17 00:00:00 2001
+From: Garrett Brown <garrett@Garretts-MacBook-Pro.local>
+Date: Sun, 13 Sep 2026 01:04:38 -0700
+Subject: [PATCH 3/3] Fix core reload buffers and empty-disc restoration
+
+Reset video buffer geometry and capacity when freeing allocations so a
+subsequent core initialization allocates fresh buffers.
+
+Accept selecting no disc when the image list is empty, allowing frontends to
+restore an empty disc state.
+---
+ dosbox_pure_libretro.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/dosbox_pure_libretro.cpp b/dosbox_pure_libretro.cpp
+index 2768aaf..195e2ef 100644
+--- a/dosbox_pure_libretro.cpp
++++ b/dosbox_pure_libretro.cpp
+@@ -2979,7 +2979,7 @@ void retro_init(void) //#3
+ 
+ 		static bool RETRO_CALLCONV set_image_index(unsigned index)
+ 		{
+-			if (index >= dbp_images.size()) return false;
++			if (index >= dbp_images.size()) return dbp_images.empty();
+ 			dbp_image_index = index;
+ 			return true;
+ 		}
+@@ -3841,7 +3841,7 @@ bool retro_unserialize(const void *data, size_t size)
+ 
+ void retro_deinit(void)
+ {
+-	for (DBP_Buffer& buf : dbp_buffers) { if (buf.video) { free(buf.video); buf.video = NULL; } }
++	for (DBP_Buffer& buf : dbp_buffers) { free(buf.video); buf = {}; }
+ }
+ 
+ // Unused features
+-- 
+2.50.1 (Apple Git-155)
+
