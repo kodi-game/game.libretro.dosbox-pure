@@ -498,10 +498,6 @@ msgctxt "#30115"
 msgid "Advanced > Horizontal Mouse Sensitivity"
 msgstr ""
 
-msgctxt "#30116"
-msgid "Experiment with this value if the mouse is too fast/slow when moving left/right."
-msgstr ""
-
 msgctxt "#30117"
 msgid "Advanced > Action Wheel Inputs"
 msgstr ""
@@ -1945,3 +1941,7 @@ msgid ""
 "Swap the left and the right audio channel.\n"
 "\n"
 msgstr ""
+
+#~ msgctxt "#30116"
+#~ msgid "Experiment with this value if the mouse is too fast/slow when moving left/right."
+#~ msgstr ""

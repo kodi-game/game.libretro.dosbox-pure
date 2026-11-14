@@ -198,7 +198,7 @@
 					</constraints>
 					<control type="list" format="string" />
 				</setting>
-				<setting id="dosbox_pure_mouse_speed_factor_x" type="string" label="30115" help="30116">
+				<setting id="dosbox_pure_mouse_speed_factor_x" type="string" label="30115" help="30467">
 					<level>0</level>
 					<default>1.0</default>
 					<constraints>
@@ -220,6 +220,8 @@
 							<option label="30049">0.9</option>
 							<option label="30089">0.95</option>
 							<option label="30050">1.0</option>
+							<option label="30468">0</option>
+							<option label="30469">only</option>
 							<option label="30090">1.1</option>
 							<option label="30091">1.2</option>
 							<option label="30092">1.3</option>

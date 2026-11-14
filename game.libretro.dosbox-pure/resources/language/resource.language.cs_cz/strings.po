@@ -510,10 +510,6 @@ msgctxt "#30115"
 msgid "Advanced > Horizontal Mouse Sensitivity"
 msgstr "Pokročilé > Vodorovná citlivost myši"
 
-msgctxt "#30116"
-msgid "Experiment with this value if the mouse is too fast/slow when moving left/right."
-msgstr "Experimentujte s touto hodnotou, pokud je pohyb myši doleva/doprava příliš rychlý nebo pomalý."
-
 msgctxt "#30117"
 msgid "Advanced > Action Wheel Inputs"
 msgstr "Pokročilé > Vstupy kruhové nabídky akcí"
@@ -2001,3 +1997,7 @@ msgid ""
 msgstr ""
 "Prohodit levý a pravý zvukový kanál.\n"
 "\n"
+
+#~ msgctxt "#30116"
+#~ msgid "Experiment with this value if the mouse is too fast/slow when moving left/right."
+#~ msgstr "Experimentujte s touto hodnotou, pokud je pohyb myši doleva/doprava příliš rychlý nebo pomalý."
