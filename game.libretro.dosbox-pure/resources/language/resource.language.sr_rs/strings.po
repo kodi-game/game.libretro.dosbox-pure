@@ -1942,6 +1942,14 @@ msgid ""
 "\n"
 msgstr ""
 
-#~ msgctxt "#30116"
-#~ msgid "Experiment with this value if the mouse is too fast/slow when moving left/right."
-#~ msgstr ""
+msgctxt "#30467"
+msgid "Experiment with this value if the mouse is too fast/slow when moving left/right. Also allows disabling one axis."
+msgstr ""
+
+msgctxt "#30468"
+msgid "Disable Horizontal Movement"
+msgstr ""
+
+msgctxt "#30469"
+msgid "Disable Vertical Movement"
+msgstr ""
